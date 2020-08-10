@@ -1,3 +1,5 @@
+use std::io::Read;
+
 //---------------CELL---------------
 
 struct Cell {
@@ -37,21 +39,6 @@ impl Cell {
 //---------------MAIN---------------
 
 fn main() {
-
-    // the original puzzle
-    let init_board: Vec<i32> = vec![
-        5,3,0,  0,7,0,  0,0,0,
-        6,0,0,  1,9,5,  0,0,0,
-        0,9,8,  0,0,0,  0,6,0,
-
-        8,0,0,  0,6,0,  0,0,3,
-        4,0,0,  8,0,3,  0,0,1,
-        7,0,0,  0,2,0,  0,0,6,
-        
-        0,6,0,  0,0,0,  2,8,0,
-        0,0,0,  4,1,9,  0,0,5,
-        0,0,0,  0,8,0,  0,7,9
-        ];
     
     //points to the corresponding row (litarally just the index...)
     let row_indicies: Vec<usize> = vec![
@@ -93,6 +80,7 @@ fn main() {
     ];
 
     let mut current_index = 0;
+    let init_board: Vec<i32> = read_puzzle();
     let mut board = read_cells_into_board(&init_board); 
 
     println!("Original puzzle");
@@ -141,6 +129,25 @@ fn main() {
 }
 
 //------------FUNCTIONS-------------
+
+fn read_puzzle() -> Vec<i32> {
+    let mut file = std::fs::File::open("puzzle.txt").unwrap();
+    let mut ascii_buffer = Vec::new();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut ascii_buffer).unwrap();
+
+    for i in ascii_buffer {
+        if i < 58 && i >= 48 {
+            buffer.push((i - 48) as i32);
+        }
+    }
+    if buffer.len() != 81 {
+        println!("ERROR! puzzle.txt should have 81 numbers but, actually has {}", buffer.len());
+        std::process::exit(0);
+    }
+    buffer
+}
+
 
 // creates a vector of cells from a vector of ints
 fn read_cells_into_board(init_board: &[i32]) -> Vec<Cell>{
