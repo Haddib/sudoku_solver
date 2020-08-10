@@ -7,18 +7,30 @@ struct Cell {
     row_number: usize,
     column_number: usize,
     box_number: usize,
-    //excluded_numbers: Vec<i32>
+    excluded_numbers: Vec<i32>
 }
 
 impl Cell {
     fn new(value: i32, row_number: usize, column_number: usize, box_number: usize) -> Self {
         Self{
-            value: value,
-            row_number: row_number,
-            column_number: column_number,
-            box_number: box_number,
-          //  excluded_numbers: Vec::new()
+            value,
+            row_number,
+            column_number,
+            box_number,
+            excluded_numbers: Vec::new()
         }
+    }
+
+    fn is_number_excluded(self: &Self, value: i32) -> bool{
+        self.excluded_numbers.contains(&value)
+    }
+
+    fn add_to_excluded_numbers(self: &mut Self){
+        self.excluded_numbers.push(self.value);
+    }
+
+    fn clear_excluded_numbers(self: &mut Self){
+        self.excluded_numbers.clear();
     }
 }
 //---------------MAIN---------------
@@ -77,63 +89,49 @@ fn main() {
 
     let mut current_index = 0;
     let mut board = read_cells_into_board(&init_board); 
-    //let boxes = assign_cells_to_boxes(&board);
-    //let mut rows: Vec<Container> = assign_cells_to_rows_or_columns(&mut board, true);
-    //let mut columns: Vec<Container> = assign_cells_to_rows_or_columns(&mut board, false);
 
-    /*print_board(&board);
-    print_boxes(&boxes);
-    print_rows(&rows);
-    print_rows(&columns);
-    */
+    println!("Original puzzle");
+    print_board(&board);
+
     while current_index < 80 {
         // is this cell predetermined
         if init_board[current_index] != 0 {
-            println!("Value at {} is immutable", current_index);
+            //println!("Value at {} is immutable", current_index);
             //go to the next cell
             current_index += 1;
         } else {
             //check for every value ABOVE the current value
-            for val in board[current_index].value..=9 {
-                if val == 0 {
-                    board[current_index].value = 1;
-                } else {
+            for val in 1..=9 {
+                if is_valid_and_unique((&row_indicies, &column_indicies, &box_indicies), current_index, val, &board){
                     board[current_index].value = val;
-                }
-                if is_unique(board[current_index].row_number, &row_indicies, board[current_index].value, current_index, &board) &&
-                    is_unique(board[current_index].column_number, &column_indicies, board[current_index].value, current_index, &board) &&
-                    is_unique(board[current_index].box_number, &box_indicies, board[current_index].value, current_index, &board)
-                {
-                    println!("{} is unique", board[current_index].value);
+                    //print_board(&board);
                     current_index += 1;
                     break;
-                } else if val == 9 {
-                    board[current_index].value = 0;
-                    if current_index == 0 {
-                        return;
-                    } else {
+                }
+                else if val == 9 {
+                    board[current_index].clear_excluded_numbers();
+                    current_index -= 1;
+                    while init_board[current_index] != 0 {
+                        if current_index == 0 {
+                            println!("Puzzle unsolvable :(");
+                            return;
+                        }
                         current_index -= 1;
-                        if board[current_index].value != 9 {
-                            board[current_index].value += 1;
-                        }
-                        while board[current_index].value == 9 {
-                            board[current_index].value = 0;
-                            current_index -= 1;
-                        }
-                        break;
                     }
-                } 
+                    board[current_index].add_to_excluded_numbers();
+                    board[current_index].value = 0;
+                }    
             }
         }
-        println!("current index: {}", current_index);
-        
-        print_board(&board);
+        //print_loading_bar(current_index);
     }
+    println!("Solved!");
+    print_board(&board);
 }
 
 //------------FUNCTIONS-------------
 
-fn read_cells_into_board(init_board: &Vec<i32>) -> VecDeque<Cell>{
+fn read_cells_into_board(init_board: &[i32]) -> VecDeque<Cell>{
     let mut board: VecDeque<Cell> = VecDeque::new();
     for row in 0..9{
         for column in 0..9 {
@@ -141,74 +139,52 @@ fn read_cells_into_board(init_board: &Vec<i32>) -> VecDeque<Cell>{
             board.push_back(Cell::new(init_board[i], row, column, get_assigned_box(row, column)));
         }
     } 
-    return board;
+    board
 }
 
-fn is_unique(container_index: usize, container: &Vec<usize>, value: i32, current_index: usize, board: &VecDeque<Cell>) -> bool {
+fn is_valid_and_unique((rows, columns, boxes): (&[usize], &[usize], &[usize]), current_index: usize, value: i32, board: &VecDeque<Cell>) -> bool {
+    !board[current_index].is_number_excluded(value) && 
+            is_unique(board[current_index].row_number, &rows, value, current_index, &board) &&
+            is_unique(board[current_index].column_number, &columns, value, current_index, &board) &&
+            is_unique(board[current_index].box_number, &boxes, value, current_index, &board)
+}
+
+fn is_unique(container_index: usize, container: &[usize], value: i32, current_index: usize, board: &VecDeque<Cell>) -> bool {
     let mut current_container: Vec<usize> = Vec::new();
     for i in 0..9{
         current_container.push(container[container_index * 9 + i]);
     }
-    for i in current_container{
-        if i != current_index && board[i].value == value{
-            return false
+    for j in current_container{
+        if j != current_index && board[j].value == value{
+            return false;
         }
     }
-    return true;
+    true
 }
-
-/*fn is_unique(row_index: usize, column_index: usize, box_index: usize, value: i32, current_index: usize, board: &VecDeque<Cell>) -> bool {
-    let mut current_row: Vec<usize> = Vec::new();
-    let mut current_column: Vec<usize> = Vec::new();
-    let mut current_box: Vec<usize> = Vec:: new();
-    for i in 0..9{
-        current_row.push(ROW_INDICIES[row_index * 9 + i]);
-        current_column.push(COLUMN_INDICIES[column_index * 9 + i]);
-        current_box.push(BOX_INDICIES[box_index * 9 + i]);
-    }  
-    for i in current_row{
-        if i != current_index && board[i].value == value{
-            return false
-        }
-    }
-    for i in current_column{
-        if i != current_index && board[i].value == value{
-            return false
-        }
-    }
-    for i in current_box{
-        if i != current_index && board[i].value == value{
-            return false
-        }
-    }
-    return true;
-}*/
 
 fn get_assigned_box(row: usize, column: usize) -> usize {
     if row < 3 {
         if column < 3 {
-            return 0;
+            0
         } else if column > 5 {
-            return 2;
+            2
         } else {
-            return 1;
+            1
         }
     } else if row > 5 {
         if column < 3 {
-            return 6;
+            6
         } else if column > 5 {
-            return 8;
+            8
         } else {
-            return 7;
+            7
         }
+    } else if column < 3 {
+        3
+    } else if column > 5 {
+        5
     } else {
-        if column < 3 {
-            return 3;
-        } else if column > 5 {
-            return 5;
-        } else {
-            return 4;
-        }
+        4
     }
 }
 
@@ -217,9 +193,22 @@ fn get_assigned_box(row: usize, column: usize) -> usize {
 fn print_board(board: &VecDeque<Cell>){
     for i in 0..9 {
         for j in 0..9{
-            print!("{}, ", board[i*9+j].value);
+            if board[i*9+j].value == 0 {
+                print!("  ");
+            }
+            else{
+                print!("{} ", board[i*9+j].value);
+            }
+            if (j + 1) % 3 == 0 && j != 8 {
+                print!("| ")
+            }
         }
-        println!("");
+        if (i + 1) % 3 == 0 && i != 8 {
+            println!("\n------+-------+------");
+        }
+        else {
+            println!();
+        }
     }
-    println!("");
+    println!();
 }
